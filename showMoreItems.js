@@ -1,5 +1,5 @@
 /*!
- * showMoreItem.js Version:1.0.0
+ * showMoreItem.js Version:1.0.1
  * @copyright 2020 PeggyHsieh
  * @license MIT (https://github.com/peggy-hsieh/showMoreItems)
  */
@@ -31,40 +31,16 @@
                 responsive:''
             }
             dataSettings = $(element).data('showMoreItems') || {};
+            _.defaults = $.extend({}, defaults, settings, dataSettings);
             _.options = $.extend({}, defaults, settings, dataSettings);
+            _.registerBreakpoints(element);
             _.init(element);
         }
         return ShowMoreItems;
     }());
     ShowMoreItems.prototype.init = function(element) {
         var _ = this;
-        _.defaults=_.options;
         _.sum = $(element).children().length
-        $(window).resize(function() {
-            _.options = $.extend({}, _.options, _.defaults);
-            $.each(_.options.responsive, function(index, value) {
-                if($(window).innerWidth()<=value.breakpoint){
-                    value = value.settings
-                    _.options = $.extend({}, _.options, value);
-                }
-                else{
-                    return false
-                }
-            });
-            _.runData(element, _);
-            return false
-        });
-        if(_.options.responsive.length){
-            $.each(_.options.responsive, function(index, value) {
-                if($(window).innerWidth()<=value.breakpoint){
-                    value = value.settings
-                    _.options = $.extend({}, _.options, value);
-                }
-                else{
-                    return false
-                }
-            });
-        }
         _.runData(element, _);
         return false
     };
@@ -113,8 +89,68 @@
         var _ = this;
         thisE = element.parent().prev();
         element.remove();
+        _.registerBreakpoints(element);
         _.init(thisE);
     }
+    
+    ShowMoreItems.prototype.registerBreakpoints = function(element) {
+        var _ = this;
+        if(_.options.responsive){
+            ResponsiveArr = _.options.responsive
+            //排序
+            ResponsiveArr = ResponsiveArr.sort(function (a, b) {
+             return a.breakpoint > b.breakpoint ? -1 : 1;
+            });
+            _.options.responsive = ResponsiveArr
+            _.Oindex = -1
+            _.Owidth = $(window).width()
+            $.each(_.options.responsive, function(index, value) {
+                if($(window).width()<=value.breakpoint){
+                    _.Oindex= index
+                    value = value.settings
+                    _.options = $.extend({}, _.options, value);
+                }
+            });
+            $(window).resize(function() {
+                run=false
+                if($(window).width() <_.Owidth){
+                    _.Owidth = $(window).width()
+                    $.each(_.options.responsive, function(index, value) {
+                        if(_.Owidth<=value.breakpoint && _.Oindex < index){
+                            _.Oindex= index
+                            value = value.settings
+                            _.options = $.extend({}, _.options, _.defaults);
+                            _.options = $.extend({}, _.options, value);
+                            run=true
+                            return _.Oindex
+                        }
+                    });
+                }
+                if($(window).width() >_.Owidth){
+                    _.Owidth = $(window).width()
+                    $.each(ResponsiveArr, function(index, value) {
+                        if(_.Owidth>value.breakpoint && _.Oindex > index-1){
+                            _.Oindex= index-1
+                            if(_.Oindex!=-1){
+                                value = ResponsiveArr[index-1].settings
+                                _.options = $.extend({}, _.options, _.defaults);
+                                _.options = $.extend({}, _.options, value);
+                                run=true
+                            }else{
+                                _.options = $.extend({}, _.options, _.defaults);
+                                run=true 
+                            }
+                            return _.Oindex
+                        }
+                    });
+                }
+                if(run==true){
+                     _.runData(element, _);
+                }
+                return false
+            });
+        }
+    };
     $.fn.showMoreItems = function() {
         var _ = this,
             opt = arguments[0],
